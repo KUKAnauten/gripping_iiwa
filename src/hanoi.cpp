@@ -53,11 +53,32 @@ namespace hanoi {
 class HanoiGripper : public iimoveit::RobotInterface {
 public:
   HanoiGripper(ros::NodeHandle* node_handle, const std::string& planning_group, const std::string& base_frame)
-      :  RobotInterface(node_handle, planning_group, base_frame) {
+      :  RobotInterface(node_handle, planning_group, base_frame),
+         base_pose_jointspace_{-0.753815352917, 1.1734058857, 0.112757593393, -1.68315970898, -0.736448764801, -1.34951746464, 0.104109719396} {
+    // Get endeffector pose from joint space goal
+    robot_state_.setJointGroupPositions(joint_model_group_, base_pose_jointspace_);
+    const Eigen::Affine3d& end_effector_state = robot_state_.getGlobalLinkTransform(move_group_.getEndEffectorLink());
+    Eigen::Vector3d t(end_effector_state.translation());
+    Eigen::Quaterniond q(end_effector_state.rotation());
+    base_pose_.position.x = t[0];
+    base_pose_.position.y = t[1];
+    base_pose_.position.z = t[2];
+    base_pose_.orientation.x = q.x();
+    base_pose_.orientation.y = q.y();
+    base_pose_.orientation.z = q.z();
+    base_pose_.orientation.w = q.w();
+
+    // Reset robot state to current state
+    updateRobotState();
+  }
+
+  void moveToBasePose() {
+    planAndMove(base_pose_jointspace_, std::string("base_pose_jointspace"), true);
   }
 
 private:
-
+  std::vector<double> base_pose_jointspace_;
+  geometry_msgs::Pose base_pose_;
 };
 } // namespace hanoi
 
@@ -69,9 +90,7 @@ int main(int argc, char **argv)
   spinner.start();
 
   hanoi::HanoiGripper hanoi_gripper(&node_handle, "manipulator", "world");
-  //pose_follower.waitForApproval();
-  ROS_INFO_NAMED("pose_follower", "Subscribed to pose!");
-
+  hanoi_gripper.moveToBasePose();
 
   ros::Rate rate(10);
   while(ros::ok()) {
