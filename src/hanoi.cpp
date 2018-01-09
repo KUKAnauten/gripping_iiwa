@@ -1,4 +1,4 @@
-/*********************************************************************
+  /*********************************************************************
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2013, SRI International
@@ -46,6 +46,7 @@ a7: 0.104109719396
 
 
 #include <iimoveit/robot_interface.h>
+#include <tf/LinearMath/Quaternion.h>
 
 
 namespace hanoi {
@@ -76,9 +77,63 @@ public:
     planAndMove(base_pose_jointspace_, std::string("base_pose_jointspace"), true);
   }
 
+  void moveToBaseRelativePose(const geometry_msgs::Pose& relativePose, bool approvalRequired) {
+    tf::Quaternion base_quaternion(base_pose_.orientation.x, base_pose_.orientation.y, base_pose_.orientation.z, base_pose_.orientation.w);
+    tf::Quaternion next_quaternion(relativePose.orientation.x, relativePose.orientation.y, relativePose.orientation.z, relativePose.orientation.w);
+    tf::Quaternion result_quaternion = next_quaternion * base_quaternion;
+
+    geometry_msgs::Pose target_pose = base_pose_;
+    target_pose.position.x += relativePose.position.x;
+    target_pose.position.y += relativePose.position.y;
+    target_pose.position.z += relativePose.position.z;
+    target_pose.orientation.x = result_quaternion.getX();
+    target_pose.orientation.y = result_quaternion.getY();
+    target_pose.orientation.z = result_quaternion.getZ();
+    target_pose.orientation.w = result_quaternion.getW();
+
+    planAndMove(target_pose, std::string("relative pose"), approvalRequired);
+  }
+
+  void moveToBaseRelativePosition(const geometry_msgs::Point relativePosition, bool approvalRequired) {
+    geometry_msgs::Pose target_pose = base_pose_;
+    target_pose.position.x += relativePosition.x;
+    target_pose.position.y += relativePosition.y;
+    target_pose.position.z += relativePosition.z;
+
+    planAndMove(target_pose, std::string("relative pose"), approvalRequired);
+  }
+
+  void moveToBaseRelativePosition(double x, double y, double z, bool approvalRequired) {
+    geometry_msgs::Pose target_pose = base_pose_;
+    target_pose.position.x += x;
+    target_pose.position.y += y;
+    target_pose.position.z += z;
+
+    planAndMove(target_pose, std::string("relative pose"), approvalRequired);
+  }
+
+  // These might come from iimoveit or a similar package
+  void openGripper() {}
+  void closeGripper() {}
+
+  void grabFromLeftTower() {}
+  void putToLeftTower() {}
+  void grabFromCenterTower() {}
+  void putToCenterTower() {}
+  void grabFromRightTower() {}
+  void putToRightTower(){}
+
 private:
   std::vector<double> base_pose_jointspace_;
   geometry_msgs::Pose base_pose_;
+  geometry_msgs::Pose left_tower_relPose_;
+  geometry_msgs::Pose right_tower_relPose_;
+  geometry_msgs::Pose center_tower_relPose_;
+  double slice_height_;
+  int nslices_left_;
+  int nslices_center_;
+  int nslices_right_;
+  bool grapping_;
 };
 } // namespace hanoi
 
@@ -91,11 +146,22 @@ int main(int argc, char **argv)
 
   hanoi::HanoiGripper hanoi_gripper(&node_handle, "manipulator", "world");
   hanoi_gripper.moveToBasePose();
+  double sdl = 0.15;
+  hanoi_gripper.moveToBaseRelativePosition(0.0, sdl, 0.0, true);
+  hanoi_gripper.moveToBaseRelativePosition(sdl, sdl, 0.0, false);
+  hanoi_gripper.moveToBaseRelativePosition(sdl, 0.0, 0.0, false);
+  hanoi_gripper.moveToBaseRelativePosition(sdl, 0.0, sdl, false);
+  hanoi_gripper.moveToBaseRelativePosition(0.0, 0.0, sdl, false);
+  hanoi_gripper.moveToBaseRelativePosition(0.0, sdl, sdl, false);
+  hanoi_gripper.moveToBaseRelativePosition(sdl, sdl, sdl, false);
+  hanoi_gripper.moveToBaseRelativePosition(0.0, 0.0, 0.0, false);
 
+  /*
   ros::Rate rate(10);
   while(ros::ok()) {
     rate.sleep();
   }
+  */
   ros::shutdown();
   return 0;
 }
