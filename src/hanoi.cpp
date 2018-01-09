@@ -81,6 +81,7 @@ public:
     tf::Quaternion base_quaternion(base_pose_.orientation.x, base_pose_.orientation.y, base_pose_.orientation.z, base_pose_.orientation.w);
     tf::Quaternion next_quaternion(relativePose.orientation.x, relativePose.orientation.y, relativePose.orientation.z, relativePose.orientation.w);
     tf::Quaternion result_quaternion = next_quaternion * base_quaternion;
+    result_quaternion.normalize();
 
     geometry_msgs::Pose target_pose = base_pose_;
     target_pose.position.x += relativePose.position.x;
@@ -110,6 +111,14 @@ public:
     target_pose.position.z += z;
 
     planAndMove(target_pose, std::string("relative pose"), approvalRequired);
+  }
+
+  void buttonEventCallback(const std_msgs::String::ConstPtr& msg) {
+    ROS_INFO("Der Schmartie funktioniert: %s", msg->data.c_str());
+    if(msg->data == "pose_get_pressed") {
+      geometry_msgs::PoseStamped current_pose = getPose();
+      ROS_INFO("Current Position = (%f, %f, %f)", current_pose.pose.position.x, current_pose.pose.position.y, current_pose.pose.position.z);
+    }
   }
 
   // These might come from iimoveit or a similar package
